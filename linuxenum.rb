@@ -40,6 +40,7 @@ class MetasploitModule < Msf::Auxiliary
     print_status("Starting Linux enumeration on #{ip}...")
 
     commands = [
+      "nmap #{ip}",
       "nmap -T4 -p- --open #{ip}",
       "nmap -sC -sV #{ip}",
       "nmap -A -p- #{ip}",

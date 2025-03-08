@@ -1,0 +1,4 @@
+# Python Libraries
+openai
+subprocess
+os

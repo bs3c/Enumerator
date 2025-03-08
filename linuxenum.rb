@@ -103,7 +103,6 @@ class MetasploitModule < Msf::Auxiliary
     "gcloud auth list",
     "kubectl get pods",
     "docker ps -a",
-    "searchsploit $(cat #{output_file} | grep -Eo '[A-Za-z]+ [0-9]+\.[0-9]+(\.[0-9]+)?')"
   ]
 
     results = ""

@@ -6,8 +6,8 @@ class MetasploitModule < Msf::Auxiliary
 
   def initialize
     super(
-      'Name'        => 'Linux Enumeration Module',
-      'Description' => 'Performs active enumeration on Linux targets and permanently adds domain to /etc/hosts',
+      'Name'        => 'Enhanced Linux Enumeration Module',
+      'Description' => 'Performs active enumeration on Linux targets, permanently adds domain to /etc/hosts, and runs searchsploit on discovered services.',
       'Author'      => ['YourName'],
       'License'     => MSF_LICENSE
     )
@@ -30,6 +30,36 @@ class MetasploitModule < Msf::Auxiliary
     end
   end
 
+  def run_command(command)
+    print_status("Running: #{command}")
+    output = `#{command} 2>/dev/null`
+    print_good(output.chomp) unless output.empty?
+    return output
+  end
+
+  def extract_versions(scan_output)
+    """Extracts software versions from scan results"""
+    versions = []
+    scan_output.each_line do |line|
+      if line =~ /(\w+)\s+(\d+\.\d+(\.\d+)?)/  # Example: Apache 2.4.29
+        service, version = $1, $2
+        versions << "#{service} #{version}"
+      end
+    end
+    versions.uniq
+  end
+
+  def search_exploits(versions)
+    """Runs searchsploit on detected software versions"""
+    exploits = []
+    versions.each do |service_version|
+      print_status("Searching exploits for: #{service_version}")
+      result = `searchsploit --color --nmap '#{service_version}'`
+      exploits << result unless result.empty?
+    end
+    exploits
+  end
+
   def run_host(ip)
     domain = datastore['DOMAIN']
     protocol = datastore['PROTOCOL']
@@ -40,11 +70,8 @@ class MetasploitModule < Msf::Auxiliary
     print_status("Starting Linux enumeration on #{ip}...")
 
     commands = [
-      "nmap #{ip}",
-      "nmap -T4 -p- --open #{ip}",
       "nmap -sC -sV #{ip}",
       "nmap -A -p- #{ip}",
-      "nmap -sU --top-ports 100 #{ip}",
       "whois #{domain || ip}",
       "dig any #{domain || ip} +noall +answer",
       "nslookup #{domain || ip}",
@@ -57,26 +84,47 @@ class MetasploitModule < Msf::Auxiliary
       "showmount -e #{ip}"
     ]
 
+    results = ""
+
     File.open(output_file, 'a') do |file|
       commands.each do |cmd|
-        print_status("Running: #{cmd}")
+        output = run_command(cmd)
+        results << output
 
-        IO.popen(cmd) do |io|
-          io.each_line do |line|
-            print_good(line.chomp)  # Print output as it runs
-            file.puts(line.chomp)    # Write output to file
-          end
-        end
-
-        # Store results in Metasploit DB after each command
-        result = File.read(output_file)
-        framework.db.report_note(
-          host: ip,
-          type: "linux_enum",
-          data: result
-        )
+        # Write results to the output file
+        file.puts(output)
       end
     end
+
+    # Extract software versions & run searchsploit
+    detected_versions = extract_versions(results)
+    if detected_versions.any?
+      print_status("Found software versions: #{detected_versions.join(', ')}")
+      exploits = search_exploits(detected_versions)
+
+      if exploits.any?
+        File.open(output_file, 'a') do |file|
+          file.puts("\n[+] Found potential exploits:\n")
+          exploits.each { |e| file.puts(e) }
+        end
+        print_good("[+] Exploits found! Check #{output_file}")
+      else
+        print_status("No known exploits found for detected versions.")
+      end
+    else
+      print_status("No software versions detected in scan results.")
+    end
+
+    # Store final results in Metasploit DB
+    framework.db.report_note(
+      host: ip,
+      type: "linux_enum",
+      data: File.read(output_file)
+    )
+
+    print_status("Linux enumeration for #{ip} complete! Results saved to #{output_file}.")
+  end
+end
 
     print_status("Linux enumeration for #{ip} complete! Results saved to #{output_file}.")
   end

@@ -69,20 +69,42 @@ class MetasploitModule < Msf::Auxiliary
 
     print_status("Starting Linux enumeration on #{ip}...")
 
-    commands = [
-      "nmap -sC -sV #{ip}",
-      "nmap -A -p- #{ip}",
-      "whois #{domain || ip}",
-      "dig any #{domain || ip} +noall +answer",
-      "nslookup #{domain || ip}",
-      "nikto -h #{protocol}://#{domain || ip}",
-      "rpcinfo -p #{ip}",
-      "snmpwalk -c public -v2c #{ip}",
-      "arp-scan --localnet",
-      "netdiscover -r #{ip}/24",
-      "smbclient -L //#{ip} -N",
-      "showmount -e #{ip}"
-    ]
+  commands = [
+    "nmap -sC -sV #{ip}",
+    "nmap -A -p- #{ip}",
+    "nmap --script=vuln #{ip}",
+    "nmap --script=http-enum,http-title,http-methods #{ip}",
+    "nmap --script=smb-os-discovery,smb-enum*,smb-vuln* #{ip}",
+    "nmap --script=snmp-info #{ip}",
+    "arp-scan --localnet",
+    "netdiscover -r #{ip}/24",
+    "rpcinfo -p #{ip}",
+    "snmpwalk -c public -v2c #{ip}",
+    "whatweb #{protocol}://#{domain || ip}",
+    "wappalyzer #{protocol}://#{domain || ip}",
+    "dirsearch -u #{protocol}://#{domain || ip} -e php,html,txt,js,json",
+    "feroxbuster -u #{protocol}://#{domain || ip} -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt",
+    "ffuf -u #{protocol}://#{domain || ip}/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt",
+    "subfinder -d #{domain}",
+    "nikto -h #{protocol}://#{domain || ip}",
+    "wpscan --url #{protocol}://#{domain || ip} --enumerate vp,ap,tt,u",
+    "joomscan --url #{protocol}://#{domain || ip}",
+    "nuclei -target #{protocol}://#{domain || ip}",
+    "smbmap -H #{ip}",
+    "enum4linux -a #{ip}",
+    "smbclient -L //#{ip} -N",
+    "showmount -e #{ip}",
+    "ldapsearch -h #{ip} -x -s base namingcontexts",
+    "nmap --script=mysql-info,mysql-databases,mysql-users,mysql-vuln-cve2016-6662 #{ip}",
+    "nmap --script=ms-sql-info,ms-sql-config,ms-sql-empty-password,ms-sql-xp-cmdshell #{ip}",
+    "nmap --script=pgsql-info #{ip}",
+    "redis-cli -h #{ip} INFO",
+    "aws s3 ls",
+    "gcloud auth list",
+    "kubectl get pods",
+    "docker ps -a",
+    "searchsploit $(cat #{output_file} | grep -Eo '[A-Za-z]+ [0-9]+\.[0-9]+(\.[0-9]+)?')"
+  ]
 
     results = ""
 

@@ -1,6 +1,6 @@
 # 🔥 Adding the Module to Metasploit
 
-This guide walks you through the steps to **add, load, and run** the Linux enumeration module inside Metasploit.
+This guide walks you through the steps to **add, load, and run** the module's inside Metasploit.
 
 ---
 

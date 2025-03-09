@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Ensure required tools are installed
-REQUIRED_TOOLS=("amass" "subfinder" "ffuf" "feroxbuster" "whatweb" "nuclei" "nikto")
+REQUIRED_TOOLS=("amass" "subfinder" "ffuf" "gobuster" "feroxbuster" "whatweb" "nuclei" "nikto")
 for tool in "${REQUIRED_TOOLS[@]}"; do
     if ! command -v "$tool" &> /dev/null; then
         echo "[-] Error: $tool is not installed. Please install it before running install_tools.sh."
@@ -34,16 +34,21 @@ echo "[+] Results will be saved in: $OUTPUT_FILE"
 echo "[+] Limiting to $MAX_CONCURRENT_SCANS parallel scans..."
 echo -e "\n==================== Web Enumeration Results ====================\n" > "$OUTPUT_FILE"
 
-# Define web enumeration commands
+# Gobuster runs first
+GOBUSTER_CMD="gobuster dir -u $PROTOCOL://$DOMAIN -w /usr/share/seclists/Discovery/Web-Content/common.txt"
+
+# Define other web enumeration commands (excluding feroxbuster)
 SCANS=(
-    "feroxbuster -u $PROTOCOL://$DOMAIN -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt -q"
-    "ffuf -u $PROTOCOL://$DOMAIN/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt"
     "amass enum -passive -d $DOMAIN | tee -a subdomains.txt"
     "subfinder -d $DOMAIN -silent | tee -a subdomains.txt"
     "whatweb $PROTOCOL://$DOMAIN"
     "nikto -h $PROTOCOL://$DOMAIN"
     "nuclei -target $PROTOCOL://$DOMAIN"
+    "ffuf -u $PROTOCOL://$DOMAIN/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt"
 )
+
+# Feroxbuster runs last
+FEROXBUSTER_CMD="feroxbuster -u $PROTOCOL://$DOMAIN -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt -q"
 
 # Function to run scans in parallel and append results
 run_scan() {
@@ -59,7 +64,10 @@ run_scan() {
     echo "[+] Finished: $scan"
 }
 
-# Start scans with controlled concurrency
+# Run Gobuster first
+run_scan "$GOBUSTER_CMD"
+
+# Start other scans in parallel
 ACTIVE_SCANS=()
 for scan in "${SCANS[@]}"; do
     run_scan "$scan" &  # Run in the background
@@ -71,8 +79,11 @@ for scan in "${SCANS[@]}"; do
     done
 done
 
-# Wait for all scans to complete
+# Wait for all non-Feroxbuster scans to finish
 wait
+
+# Run Feroxbuster last
+run_scan "$FEROXBUSTER_CMD"
 
 # Process found subdomains and add them to /etc/hosts
 if [ -f "subdomains.txt" ]; then

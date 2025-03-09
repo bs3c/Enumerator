@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Ensure required tools are installed
-REQUIRED_TOOLS=("amass" "subfinder" "ffuf" "gobuster" "feroxbuster" "whatweb" "nuclei" "nikto")
+REQUIRED_TOOLS=("amass" "subfinder" "ffuf" "gobuster" "feroxbuster" "whatweb" "nuclei" "nikto" "wpscan")
 for tool in "${REQUIRED_TOOLS[@]}"; do
     if ! command -v "$tool" &> /dev/null; then
         echo "[-] Error: $tool is not installed. Please install it before running install_tools.sh."
@@ -85,6 +85,22 @@ wait
 # Run Feroxbuster last
 run_scan "$FEROXBUSTER_CMD"
 
+# Check if WordPress is detected
+echo "[+] Checking if WordPress is detected..."
+WP_DETECTED=$(whatweb -q $PROTOCOL://$DOMAIN | grep -i "WordPress")
+
+if [[ ! -z "$WP_DETECTED" ]]; then
+    echo "[+] WordPress detected! Running WPScan..."
+    echo -e "\n==================== WPScan Results ====================\n" | tee -a "$OUTPUT_FILE"
+    
+    # Run WPScan for user, plugin, and vulnerability enumeration
+    wpscan --url $PROTOCOL://$DOMAIN --enumerate u,vp,ap | tee -a "$OUTPUT_FILE"
+    
+    echo "[+] WPScan completed!"
+else
+    echo "[-] No WordPress detected."
+fi
+
 # Process found subdomains and add them to /etc/hosts
 if [ -f "subdomains.txt" ]; then
     echo "[+] Found subdomains:"
@@ -98,3 +114,4 @@ if [ -f "subdomains.txt" ]; then
 fi
 
 echo "[+] Web Enumeration Completed. Results saved to: $OUTPUT_FILE"
+

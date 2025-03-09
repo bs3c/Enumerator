@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Ensure required tools are installed
-REQUIRED_TOOLS=("amass" "subfinder" "ffuf" "feroxbuster" "whatweb" "wappalyzer" "nuclei" "nikto")
+REQUIRED_TOOLS=("amass" "subfinder" "ffuf" "feroxbuster" "whatweb" "nuclei" "nikto")
 for tool in "${REQUIRED_TOOLS[@]}"; do
     if ! command -v "$tool" &> /dev/null; then
-        echo "[-] Error: $tool is not installed. Please install it before running this script."
+        echo "[-] Error: $tool is not installed. Please install it before running install_tools.sh."
         exit 1
     fi
 done
@@ -15,13 +15,13 @@ read -p "[+] Enter main domain (e.g., example.com): " DOMAIN
 read -p "[+] Is the target using HTTP or HTTPS? (http/https): " PROTOCOL
 OUTPUT_FILE="web_enum_results.txt"
 
-# Ensure the protocol is valid
+# Ensure valid protocol
 if [[ "$PROTOCOL" != "http" && "$PROTOCOL" != "https" ]]; then
     echo "[-] Error: Invalid protocol. Use 'http' or 'https'."
     exit 1
 fi
 
-# Add the domain to /etc/hosts
+# Add domain to /etc/hosts
 echo "[+] Adding $TARGET $DOMAIN to /etc/hosts..."
 echo "$TARGET $DOMAIN" | sudo tee -a /etc/hosts > /dev/null
 
@@ -36,14 +36,13 @@ echo -e "\n==================== Web Enumeration Results ====================\n" 
 
 # Define web enumeration commands
 SCANS=(
+    "feroxbuster -u $PROTOCOL://$DOMAIN -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt -q"
+    "ffuf -u $PROTOCOL://$DOMAIN/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt"
     "amass enum -passive -d $DOMAIN | tee -a subdomains.txt"
     "subfinder -d $DOMAIN -silent | tee -a subdomains.txt"
     "whatweb $PROTOCOL://$DOMAIN"
-    "wappalyzer $PROTOCOL://$DOMAIN"
     "nikto -h $PROTOCOL://$DOMAIN"
     "nuclei -target $PROTOCOL://$DOMAIN"
-    "feroxbuster -u $PROTOCOL://$DOMAIN -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt -q"
-    "ffuf -u $PROTOCOL://$DOMAIN/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt"
 )
 
 # Function to run scans in parallel and append results

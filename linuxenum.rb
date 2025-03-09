@@ -145,8 +145,3 @@ class MetasploitModule < Msf::Auxiliary
 
     print_status("Linux enumeration for #{ip} complete! Results saved to #{output_file}.")
   end
-end
-
-    print_status("Linux enumeration for #{ip} complete! Results saved to #{output_file}.")
-  end
-end

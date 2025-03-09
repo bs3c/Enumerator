@@ -13,6 +13,4 @@ Enumerator is a **set of automated enumeration scripts** designed to speed up re
 To execute these scripts from **anywhere** in your terminal, follow these steps:
 
 ### **1️⃣ Move Enumerator to a Global Location (Optional)**
-If you want your scripts accessible globally, **move the Enumerator directory** to `/opt/`:
-```bash
-sudo mv PATH/Enumerator /opt/enumerator
+If you want your scripts accessible globally, clone into /usr/local/bin
